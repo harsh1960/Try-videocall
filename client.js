@@ -1,4 +1,4 @@
-const socket = io("https://your-app.up.railway.app"); // Replace with your Railway URL
+const socket = io("https://serverjs-production-35cd.up.railway.app/"); // Replace with your Railway URL
 
 let localStream;
 let peerConnection;
