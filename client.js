@@ -1,4 +1,4 @@
-const socket = io("https://serverjs-production-35cd.up.railway.app/"); // Use your Railway URL
+const socket = io("https://your-app.up.railway.app"); // Replace with your Railway URL
 
 let localStream;
 let peerConnection;
@@ -12,25 +12,26 @@ const endCall = document.getElementById("endCall");
 startCall.addEventListener("click", startVideoCall);
 endCall.addEventListener("click", endCallSession);
 
-// Capture User Video & Audio
 async function startVideoCall() {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
 
-    socket.emit("joinRoom", "default-room"); // Notify the server that we joined
+    socket.emit("joinRoom", "default-room");
 }
 
 socket.on("userJoined", async () => {
-    console.log("A second user joined. Sending offer...");
-    createOffer();
+    console.log("Second user detected, creating offer...");
+    await createOffer();
 });
 
-// Create and send WebRTC offer
+// **Force Send an Offer**
 async function createOffer() {
+    console.log("Creating WebRTC Offer...");
     peerConnection = new RTCPeerConnection(servers);
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     peerConnection.ontrack = event => {
+        console.log("Receiving remote video stream...");
         remoteVideo.srcObject = event.streams[0];
     };
 
@@ -40,15 +41,19 @@ async function createOffer() {
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+    console.log("Sending offer to signaling server...");
     socket.emit("offer", offer);
 }
 
-// Receive Offer and Send Answer
+// **Listen for an Offer**
 socket.on("offer", async (offer) => {
+    console.log("Offer received from another user.");
+
     peerConnection = new RTCPeerConnection(servers);
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     peerConnection.ontrack = event => {
+        console.log("Receiving remote video stream...");
         remoteVideo.srcObject = event.streams[0];
     };
 
@@ -62,17 +67,19 @@ socket.on("offer", async (offer) => {
     socket.emit("answer", answer);
 });
 
-// Receive Answer
+// **Receive Answer**
 socket.on("answer", async (answer) => {
+    console.log("Answer received, completing WebRTC connection...");
     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
-// Handle ICE Candidates
+// **Handle ICE Candidates**
 socket.on("candidate", async (candidate) => {
+    console.log("Adding ICE Candidate...");
     await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 });
 
-// End Call
+// **End Call**
 function endCallSession() {
     if (peerConnection) {
         peerConnection.close();
